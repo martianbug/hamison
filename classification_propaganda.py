@@ -15,7 +15,6 @@ def preprocess(text):
 MODEL = f"NLP-UNED/HQP-XLM-RoBERTa"
 
 tokenizer = AutoTokenizer.from_pretrained("xlm-roberta-base")
-# tokenizer = AutoTokenizer.from_pretrained(MODEL)
 config = AutoConfig.from_pretrained(MODEL)
 model = AutoModelForSequenceClassification.from_pretrained(MODEL)
 
@@ -23,8 +22,7 @@ config.id2label = {0: "False",
                    1: "True",
                    }
 
-def classify(text: str):
-    text = 'i hate you'
+def classify_propaganda(text: str):
     text = preprocess(text)
     encoded_input = tokenizer(text, return_tensors='pt')
     output = model(**encoded_input)
@@ -33,5 +31,4 @@ def classify(text: str):
     ranking = np.argsort(scores)
     ranking = ranking[::-1]   
     output = config.id2label[ranking[0]]
-    print(output)
     return output

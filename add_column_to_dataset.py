@@ -29,17 +29,19 @@ import pandas as pd
 from tqdm import tqdm
 from joblib import Parallel, delayed
 from classification_sentiment import classify_sentiment
+from classification_propaganda import classify_propaganda
+
 from tqdm_joblib import tqdm_joblib
 
 def process_text(text):
     return classify_sentiment(text)
 
 
-DATASET = 'tweets_with_groups_and_urls_all_without_RT'
+DATASET = 'tweets_with_groups_and_urls_all_without_RT_with_sentiment'
 CSV = '.csv'
 dataset_df = pd.read_csv(DATASET + CSV)
 
-NEW_COLUMN = 'sentiment'
+NEW_COLUMN = 'propaganda'
 TEXT_COLUMN = 'text'
 
 # Keeping only eng and spa columns
