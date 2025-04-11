@@ -1,4 +1,9 @@
-pytorch
 pyvis
 transformers
 scipy
+pandas
+protobuf
+
+sentencepiece
+hf_xet
+torch torchvision torchaudio

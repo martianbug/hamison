@@ -1,4 +1,6 @@
 import pandas as pd
+from tqdm import tqdm
+# from tqdm.auto import tqdm  # for notebooks
 from classification_sentiment import classify_sentiment
 
 def process_text(text):
@@ -12,12 +14,12 @@ NEW_COLUMN = 'sentiment'
 TEXT_COLUMN = 'text'
 
 #Keeping only eng and spa columns
-
-# Define the allowed values for filtering
 ALLOWED_VALUES = ['es', 'en']  
 dataset_df = dataset_df[dataset_df['lang'].isin(ALLOWED_VALUES)]
 
-dataset_df[NEW_COLUMN] = dataset_df[TEXT_COLUMN].apply(lambda x: process_text(x))
+tqdm.pandas()
+dataset_df[NEW_COLUMN] = dataset_df[TEXT_COLUMN].progress_apply(lambda x: process_text(x))
 print(dataset_df)
+
 dataset_df.to_csv(DATASET+'_with_sentiment'+CSV, index =0)
 
