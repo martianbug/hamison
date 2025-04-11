@@ -21,7 +21,7 @@ config = AutoConfig.from_pretrained(MODEL)
 model = AutoModelForSequenceClassification.from_pretrained(MODEL)
 # model.save_pretrained(MODEL)
 
-def classify(text: str):
+def classify_sentiment(text: str):
     text = preprocess(text)
     encoded_input = tokenizer(text, return_tensors='pt')
     output = model(**encoded_input)

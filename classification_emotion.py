@@ -24,7 +24,6 @@ MODEL = MODEL_MULTI2
 tokenizer = AutoTokenizer.from_pretrained(MODEL)
 config = AutoConfig.from_pretrained(MODEL)
 model = AutoModelForSequenceClassification.from_pretrained(MODEL)
-# model.save_pretrained(MODEL)
 # %%
 # dictionary: MODEL_MULTI
 config.id2label = {0: "sadness", 
@@ -35,7 +34,6 @@ config.id2label = {0: "sadness",
                    5: "surprise",
                    }
 # %%
-
 def classify(text: str):
     # %%
     text = preprocess(text)
