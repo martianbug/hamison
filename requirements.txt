@@ -3,7 +3,10 @@ transformers
 scipy
 pandas
 protobuf
-
+joblib
 sentencepiece
 hf_xet
 torch torchvision torchaudio
+
+
+tqdm_joblib
