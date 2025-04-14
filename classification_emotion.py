@@ -16,28 +16,32 @@ def preprocess(text):
 MODEL_EN = f"pysentimiento/robertuito-emotion-analysis"
 MODEL_SPA = f"cardiffnlp/twitter-roberta-large-emotion-latest"
 
-MODEL_MULTI="Toshifumi/bert-base-multilingual-cased-finetuned-emotion"
-MODEL_MULTI2 = "agustinst1990/distilbert-base-multilingual-cased-finetuned-emotion"
+# %%
+tokenizer_en = AutoTokenizer.from_pretrained(MODEL_EN)
+config_en = AutoConfig.from_pretrained(MODEL_EN)
+model_en = AutoModelForSequenceClassification.from_pretrained(MODEL_EN)
 
-MODEL = MODEL_MULTI2
+tokenizer_es = AutoTokenizer.from_pretrained(MODEL_SPA)
+config_es = AutoConfig.from_pretrained(MODEL_SPA)
+model_es = AutoModelForSequenceClassification.from_pretrained(MODEL_SPA)
+# config.id2label = {0: "sadness", 
+#                    1: "joy",
+#                    2: "love",
+#                    3: "anger",
+#                    4: "fear",
+#                    5: "surprise",
+#                    }
 # %%
-tokenizer = AutoTokenizer.from_pretrained(MODEL)
-config = AutoConfig.from_pretrained(MODEL)
-model = AutoModelForSequenceClassification.from_pretrained(MODEL)
-# %%
-# dictionary: MODEL_MULTI
-config.id2label = {0: "sadness", 
-                   1: "joy",
-                   2: "love",
-                   3: "anger",
-                   4: "fear",
-                   5: "surprise",
-                   }
-# %%
-def classify(text: str):
-    # %%
+def classify_emotion(text: str, lang: str = "en"):
     text = preprocess(text)
-    print(text)
+    if lang =='en':
+        tokenizer = tokenizer_en
+        model = model_en
+        config = config_en
+    else:   
+        tokenizer = tokenizer_es
+        model = model_es
+        config = config_es
     encoded_input = tokenizer(text, return_tensors='pt')
     output = model(**encoded_input)
     scores = output[0][0].detach().numpy()
@@ -45,7 +49,7 @@ def classify(text: str):
     ranking = np.argsort(scores)
     ranking = ranking[::-1]  
     output = config.id2label[ranking[0]]
-    print(output)
+    print(text, lang,output)
     # %%
     
     return output

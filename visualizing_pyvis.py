@@ -17,11 +17,10 @@ net = Network(notebook = True, cdn_resources = "remote",
 
 sample = data.sample(1000, random_state = 1)
 sample.head(10)
-sample = sample.dropna(subset=['user_id', 'group'])  # Quitamos filas incompletas
+sample = sample.dropna(subset=['user_id', 'group'])
 sample['user_id'] = sample['user_id'].astype(str)
 
 
-# nodes = list(set([*sample.person1,*sample.person2]))
 nodes = sample['user_id'].dropna().astype(str).unique().tolist()
 edges = []
 user_groups = {}

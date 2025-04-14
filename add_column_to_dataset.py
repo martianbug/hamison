@@ -30,33 +30,31 @@ from tqdm import tqdm
 from joblib import Parallel, delayed
 from classification_sentiment import classify_sentiment
 from classification_propaganda import classify_propaganda
+from classification_emotion import classify_emotion
+
 
 from tqdm_joblib import tqdm_joblib
 
-def process_text(text):
-    return classify_propaganda(text)
+def process_text(text, lang):
+    return classify_emotion(text, lang= lang)
 
-
-DATASET = 'tweets_with_groups_and_urls_all_without_RT_with_sentiment'
+DATASET = 'tweets_with_groups_and_urls_all_without_RT_with_sentiment_with_propaganda'
 CSV = '.csv'
 dataset_df = pd.read_csv(DATASET + CSV)
 
 NEW_COLUMN = 'propaganda'
 TEXT_COLUMN = 'text'
+LANG_COLUMN = 'lang'
 
 # Keeping only eng and spa columns
 ALLOWED_VALUES = ['es', 'en']
 dataset_df = dataset_df[dataset_df['lang'].isin(ALLOWED_VALUES)]
 
-def process_row(text):
-    result = process_text(text)
-    return result
-
 with tqdm_joblib(tqdm(desc="Processing rows", total=len(dataset_df))):
     results = Parallel(n_jobs=-1, prefer="processes")(
-        delayed(process_row)(text) for text in dataset_df[TEXT_COLUMN]
+        delayed(process_text)(text, lang) for text, lang in zip(dataset_df[TEXT_COLUMN], dataset_df[LANG_COLUMN])
     )
-    
+
 dataset_df[NEW_COLUMN] = results
 print(dataset_df)
 
