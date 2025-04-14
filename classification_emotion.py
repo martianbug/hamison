@@ -49,7 +49,7 @@ def classify_emotion(text: str, lang: str = "en"):
     ranking = np.argsort(scores)
     ranking = ranking[::-1]  
     output = config.id2label[ranking[0]]
-    print(text, lang,output)
+    print(text[:50], lang,output)
     # %%
     
     return output
