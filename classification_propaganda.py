@@ -31,4 +31,5 @@ def classify_propaganda(text: str):
     ranking = np.argsort(scores)
     ranking = ranking[::-1]   
     output = config.id2label[ranking[0]]
+    print(text, output) 
     return output

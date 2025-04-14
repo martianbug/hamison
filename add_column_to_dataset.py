@@ -34,7 +34,7 @@ from classification_propaganda import classify_propaganda
 from tqdm_joblib import tqdm_joblib
 
 def process_text(text):
-    return classify_sentiment(text)
+    return classify_propaganda(text)
 
 
 DATASET = 'tweets_with_groups_and_urls_all_without_RT_with_sentiment'
