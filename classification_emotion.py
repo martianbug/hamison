@@ -3,15 +3,7 @@ from transformers import AutoTokenizer, AutoConfig
 import numpy as np
 import pandas as pd
 from scipy.special import softmax
-
-# Preprocess text (username and link placeholders)
-def preprocess(text):
-    new_text = []
-    for t in text.split(" "):
-        t = '@user' if t.startswith('@') and len(t) > 1 else t
-        t = 'http' if t.startswith('http') else t
-        new_text.append(t)
-    return " ".join(new_text)
+from utilities import preprocess 
 
 MODEL_EN = f"pysentimiento/robertuito-emotion-analysis"
 MODEL_SPA = f"cardiffnlp/twitter-roberta-large-emotion-latest"

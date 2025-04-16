@@ -42,7 +42,7 @@ DATASET = 'tweets_with_groups_and_urls_all_without_RT_with_sentiment_with_propag
 CSV = '.csv'
 dataset_df = pd.read_csv(DATASET + CSV)
 
-NEW_COLUMN = 'propaganda'
+NEW_COLUMN = 'emotion'
 TEXT_COLUMN = 'text'
 LANG_COLUMN = 'lang'
 
