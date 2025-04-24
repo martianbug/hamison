@@ -44,12 +44,12 @@ def process_text(text, lang):
 
 
 
-DATASET = 'tweets_with_groups_and_urls_all_without_RT_with_pyemotion'
+DATASET = 'tweets_with_groups_and_urls_all_without_RT_with_sentiment'
 
 CSV = '.csv'
 dataset_df = pd.read_csv(DATASET + CSV)
 
-NEW_COLUMN = 'propaganda'
+NEW_COLUMN = 'pyemotion'
 TEXT_COLUMN = 'text'
 LANG_COLUMN = 'lang'
 
