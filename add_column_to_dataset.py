@@ -31,18 +31,25 @@ from joblib import Parallel, delayed
 from classification_sentiment import classify_sentiment
 from classification_propaganda import classify_propaganda
 from classification_emotion import classify_emotion
+from classification_pysentimiento import classify_pysentimiento 
+
 
 
 from tqdm_joblib import tqdm_joblib
 
 def process_text(text, lang):
-    return classify_emotion(text, lang= lang)
+    # return classify_emotion(text, lang= lang)
+    # return classify_propaganda(text)
+    return classify_pysentimiento(text, lang= lang)
 
-DATASET = 'tweets_with_groups_and_urls_all_without_RT_with_sentiment_with_propaganda'
+
+
+DATASET = 'tweets_with_groups_and_urls_all_without_RT_with_pyemotion'
+
 CSV = '.csv'
 dataset_df = pd.read_csv(DATASET + CSV)
 
-NEW_COLUMN = 'emotion'
+NEW_COLUMN = 'propaganda'
 TEXT_COLUMN = 'text'
 LANG_COLUMN = 'lang'
 

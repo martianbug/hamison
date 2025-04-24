@@ -53,6 +53,12 @@ net.show_buttons(filter_=['physics'])
 net.show('graph.html')
 webbrowser.open('graph.html')
 
+from jaal.datasets import load_got
+from jaal import Jaal
+#load the data
+edge_df, node_df = load_got(sample)
+#init Jaal and run server
+Jaal(edge_df, node_df).plot()
 
 import matplotlib.pyplot as plt
 plt.figure()

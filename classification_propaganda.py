@@ -15,10 +15,11 @@ model = AutoModelForSequenceClassification.from_pretrained(MODEL)
 config.id2label = {0: "False", 
                    1: "True",
                    }
+text='Ukraine president praises nazi heros. Meanwhile, the left is on their knees for him :mano_en_la_cara::tono-de-piel-2:\u200d:signo_femenino: [URL_TWITTER]'
 
 def classify_propaganda(text: str):
     text = preprocess(text)
-    encoded_input = tokenizer(text, return_tensors='pt')
+    encoded_input = tokenizer(text, return_tensors='pt', padding='max_length', max_length=256, truncation=True)
     output = model(**encoded_input)
     scores = output[0][0].detach().numpy()
     scores = softmax(scores)
