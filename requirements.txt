@@ -6,7 +6,6 @@ protobuf
 joblib
 sentencepiece
 hf_xet
-pysentimiento
 
 torch
 torchvision
