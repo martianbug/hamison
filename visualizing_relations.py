@@ -1,3 +1,4 @@
+#%%
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -5,12 +6,12 @@ import matplotlib.pyplot as plt
 df = pd.read_csv('tweets_with_groups_and_urls_all_without_RT_with_sentiment.csv')
 df['group'] = df['group'].apply(lambda x: eval(x)[0] if isinstance(x, str) else x)
 
-# Calcular proporciones de cada sentimiento por grupo
+#%%
+#Sentiment - group relativerelations
 relative_df = df.groupby(['group', 'sentiment']).size().reset_index(name='count')
 total_by_group = relative_df.groupby('group')['count'].transform('sum')
 relative_df['percentage'] = relative_df['count'] / total_by_group * 100
 
-# Crear gráfico de barras apiladas con proporciones
 plt.figure(figsize=(10, 6))
 sns.barplot(data=relative_df, x='group', y='percentage', hue='sentiment')
 plt.title('Proporción de sentimientos por grupo')
@@ -20,3 +21,46 @@ plt.xticks(rotation=45)
 plt.legend(title='Sentimiento')
 plt.tight_layout()
 plt.show()
+
+#%%
+df['user_created_at'] = pd.to_datetime(df['user_created_at'])
+df_sorted = df.sort_values(by='user_created_at')
+# Grafica 'user_created_at' vs 'sentiment'
+plt.figure(figsize=(18, 8))
+plt.scatter(df_sorted['user_created_at'], df_sorted['sentiment'], alpha=0.3, s=10)
+plt.title('Relación entre user_created_at y sentiment')
+plt.xlabel('Fecha de creación del usuario')
+plt.ylabel('Sentimiento')
+plt.xticks(rotation=45)
+plt.grid(True, linestyle='--', alpha=0.5)
+plt.tight_layout()
+plt.show()
+
+# %%
+df_exploded = df.explode('hashtags')
+
+top_n = 20  # Número de hashtags más comunes que quieres mostrar
+top_hashtags = df_exploded['hashtags'].value_counts().head(top_n).index
+df_filtered = df_exploded[df_exploded['hashtags'].isin(top_hashtags)]
+
+counts = df_filtered.groupby(['hashtags', 'sentiment']).size().reset_index(name='count')
+
+# Segundo: sumamos por hashtag
+total_counts = counts.groupby('hashtags')['count'].transform('sum')
+
+# Tercero: sacamos el porcentaje
+counts['percentage'] = counts['count'] / total_counts
+
+# Ahora graficamos
+plt.figure(figsize=(20, 10))
+sns.barplot(data=counts, x='hashtags', y='percentage', hue='sentiment')
+
+plt.title('Distribución relativa de sentimiento por hashtag')
+plt.xlabel('Hashtag')
+plt.ylabel('Proporción')
+plt.xticks(rotation=90)
+plt.legend(title='Sentiment')
+plt.tight_layout()
+plt.show()
+# %%
+
