@@ -2,8 +2,9 @@
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+NAME = 'tweets_with_groups_and_urls_all_without_RT_with_sentiment_with_user_id_count'
 
-df = pd.read_csv('tweets_with_groups_and_urls_all_without_RT_with_sentiment.csv')
+df = pd.read_csv(NAME+'.csv')
 df['group'] = df['group'].apply(lambda x: eval(x)[0] if isinstance(x, str) else x)
 
 #%%
@@ -64,3 +65,20 @@ plt.tight_layout()
 plt.show()
 # %%
 
+# Agrupar por cantidad de tweets y sentimiento
+grouped = df.groupby(['user_id_count', 'sentiment']).size().unstack(fill_value=0)
+
+# Convertir a porcentaje
+grouped_percentage = grouped.div(grouped.sum(axis=1), axis=0)
+
+# Graficar como stacked barplot
+grouped_percentage.plot(kind='bar', stacked=True, figsize=(20, 8), colormap='Set2')
+
+plt.title('Distribución relativa de sentimiento según número de tweets del usuario')
+plt.xlabel('Cantidad de tweets del usuario (user_id_count)')
+plt.ylabel('Proporción de sentimientos')
+plt.xticks(rotation=0)
+plt.legend(title='Sentiment', bbox_to_anchor=(1.05, 1), loc='upper left')
+plt.tight_layout()
+plt.show()
+# %%
