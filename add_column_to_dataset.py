@@ -30,7 +30,7 @@ dataset_df = dataset_df[dataset_df['lang'].isin(ALLOWED_VALUES)]
 
 #%% PARALLEL
 with tqdm_joblib(tqdm(desc="Processing rows", total=len(dataset_df))):
-    results = Parallel(n_jobs=7, prefer="processes")(
+    results = Parallel(n_jobs=-1, prefer="processes")(
         delayed(process_text)(text, lang) for text, lang in zip(dataset_df[TEXT_COLUMN], dataset_df[LANG_COLUMN])
     )
 
