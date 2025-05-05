@@ -17,5 +17,5 @@ def classify_pysentimiento(text: str, lang = 'en'):
         output = emotion_analyzer_en.predict(text)
     else:   
         output = emotion_analyzer_es.predict(text)
-    print(text, output.others) 
-    return output.others
+    # print(text, output.output)
+    return output.output
