@@ -83,7 +83,7 @@ B.add_nodes_from(users, bipartite='users', color = 'blue')
 B.add_nodes_from(hashtags, bipartite='hashtags', color = 'red')
 
 # Añadir aristas: cada usuario conectado al hashtag que usó
-B.add_edges_from(edges_df.itertuples(index=False) )
+B.add_edges_from(edges_df.itertuples(index=False))
 
 plt.figure(figsize=(12, 8))
 pos = nx.spring_layout(B, k=0.15, iterations=20)
