@@ -12,10 +12,11 @@ emotion_analyzer_es = create_analyzer(task="emotion", lang="es")
 
 
 def classify_pysentimiento(text: str, lang = 'en'):
+    # https://github.com/pysentimiento/pysentimiento
     text = preprocess(text)
     if lang =='en':
-        output = emotion_analyzer_en.predict(text)
+        output = analyzer_en.predict(text)
     else:   
-        output = emotion_analyzer_es.predict(text)
-    # print(text, output.output)
+        output = analyzer_es.predict(text)
+    print(text, output.output)
     return output.output

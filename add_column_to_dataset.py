@@ -11,12 +11,12 @@ def process_text(text, lang):
     return classify_pysentimiento(text, lang= lang)
 
 DATASET = 'dataset_'
-DATASET += '28_04'
+DATASET += '06_05'
 
 CSV = '.csv'
 dataset_df = pd.read_csv(DATASET + CSV)
 
-NEW_COLUMN = 'pyemotion'
+NEW_COLUMN = 'pysentimiento'
 
 TEXT_COLUMN = 'text'
 LANG_COLUMN = 'lang'
