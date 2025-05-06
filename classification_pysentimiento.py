@@ -18,5 +18,5 @@ def classify_pysentimiento(text: str, lang = 'en'):
         output = analyzer_en.predict(text)
     else:   
         output = analyzer_es.predict(text)
-    print(text, output.output)
+    # print(text, output.output)
     return output.output
