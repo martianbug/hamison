@@ -1,68 +1,71 @@
 import pandas as pd
-import webbrowser
-import networkx as nx
-
 from pyvis.network import Network
 
-DATASET = 'tweets_with_groups_and_urls_all_without_RT_with_sentiment_with_emotion'
-CSV = '.csv'
-data = pd.read_csv(DATASET+CSV)
-GROUP = 'sentiment'
-VALUE = 'user_created_at'
+data = [
+    {"id": "user1", "type": "user", "connections": ["hashtag1", "hashtag2"], "sentiment": "positive", "activity": 12},
+    {"id": "user2", "type": "user", "connections": ["hashtag2", "hashtag3"], "sentiment": "neutral", "activity": 8},
+    {"id": "user3", "type": "user", "connections": ["hashtag1"], "sentiment": "negative", "activity": 3},
+    {"id": "user4", "type": "user", "connections": ["hashtag2", "hashtag4"], "sentiment": "positive", "activity": 6},
+    {"id": "user5", "type": "user", "connections": ["hashtag3", "hashtag5"], "sentiment": "negative", "activity": 9},
+    {"id": "user6", "type": "user", "connections": ["hashtag1", "hashtag5"], "sentiment": "positive", "activity": 11},
+    {"id": "user7", "type": "user", "connections": ["hashtag4"], "sentiment": "neutral", "activity": 5},
+    
+    {"id": "hashtag1", "type": "hashtag", "connections": ["user1", "user3", "user6"], "sentiment": "positive", "popularity": 25},
+    {"id": "hashtag2", "type": "hashtag", "connections": ["user1", "user2", "user4"], "sentiment": "neutral", "popularity": 20},
+    {"id": "hashtag3", "type": "hashtag", "connections": ["user2", "user5"], "sentiment": "negative", "popularity": 15},
+    {"id": "hashtag4", "type": "hashtag", "connections": ["user4", "user7"], "sentiment": "neutral", "popularity": 10},
+    {"id": "hashtag5", "type": "hashtag", "connections": ["user5", "user6"], "sentiment": "positive", "popularity": 12}
+]
+df = pd.DataFrame(data)
 
+def visualize_graph_from_df(df, output_html="network.html"):
+    net = Network(height="700px",
+                  width="100%",
+                  notebook=False,
+                  bgcolor="#ffffff",
+                  font_color="black",
+                  select_menu=True,
+                  filter_menu=True
+                  )
+    for _, row in df.iterrows():
+        node_id = row['id']
+        node_type = row['type']
+        sentiment = row.get('sentiment', 'neutral')
 
-net = Network(notebook = True,
-                bgcolor = "#'222222'",
-                font_color = "white",
-                height = "750px",
-                width = "100%",
-                cdn_resources='remote',
-                # select_menu=True,
-                filter_menu=True,
-)
+        # Color según tipo o sentimiento
+        color = {
+            'positive': 'green',
+            'neutral': 'gray',
+            'negative': 'red'
+        }.get(sentiment, 'blue')
 
-sample = data.sample(1000, random_state = 3)
-sample.head(10)
-sample = sample.dropna(subset=['user_id', GROUP])
-sample['user_id'] = sample['user_id'].astype(str)
-sample['value'] = pd.to_datetime(sample['user_created_at']).astype(int) // 10**9
-sample = sample.drop_duplicates(subset=['user_id', GROUP])
+        label = node_id if node_type == 'hashtag' else ''
+        size = row.get('popularity', row.get('activity', 10))
 
-sample['value'] = pd.to_datetime(sample['value'])
+        net.add_node(node_id, label=label, color=color, size=size, title=f"Type: {node_type}<br>Sentiment: {sentiment}")
 
-# Establecer la fecha base (puedes elegir cualquier fecha o la más temprana)
-base_date = sample['value'].min()
-# Calcular la diferencia en segundos con respecto a la fecha base
-sample['seconds_diff'] = (sample['value'] - base_date).dt.total_seconds()
+    for _, row in df.iterrows():
+        source = row['id']
+        for target in row['connections']:
+            net.add_edge(source, target, color="lightgray", width=0.5)
 
-# Convertir la diferencia de segundos a días, si lo prefieres
-sample['days_diff'] = sample['seconds_diff'] / (60 * 60 * 24)  # Convierte segundos a días
+    net.set_options("""
+    var options = {
+      "layout": {"improvedLayout": false},
+      "physics": {
+        "forceAtlas2Based": {
+          "gravitationalConstant": -50,
+          "centralGravity": 0.01,
+          "springLength": 100,
+          "springConstant": 0.04
+        },
+        "solver": "forceAtlas2Based",
+        "timestep": 0.35,
+        "stabilization": {"enabled": true, "iterations": 150}
+      }
+    }
+    """)
+    
+    net.show(output_html, notebook=False)
 
-max_size = 100  # Tamaño máximo de los nodos
-min_size = 10  # Tamaño mínimo de los nodos
-
-sample['size'] = (sample['days_diff'] / sample['days_diff'].max()) * (max_size - min_size) + min_size
-
-for _, row in sample.iterrows():
-    group_color = {'negative': 'red', 'neutral': 'blue', 'positive': 'green'}.get(row[GROUP], 'gray')
-    print(group_color)
-    net.add_node(row['id'], label=row['id'], group=row[GROUP], 
-                 title=f"Id: {row['id']}, Fecha: {row['user_created_at']}", color=group_color, size=row['size'])
-
-net.show_buttons(filter_=['physics'])
-net.show('graph.html')
-webbrowser.open('graph.html')
-
-from jaal.datasets import load_got
-from jaal import Jaal
-#load the data
-edge_df, node_df = load_got(sample)
-#init Jaal and run server
-Jaal(edge_df, node_df).plot()
-
-import matplotlib.pyplot as plt
-plt.figure()
-x = sample['user_created_at']
-y = sample['sentiment']
-plt.ylabel('Creation Date')
-plt.bar(x, y, color='blue')
+visualize_graph_from_df(df)

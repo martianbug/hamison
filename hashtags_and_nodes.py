@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 DATE = '06_05'
 NAME = 'dataset_' + DATE
 COLUMN_TO_ANALYZE = 'pysentimiento'
-NUMBER_OF_NODES = 750
+NUMBER_OF_NODES = 3000
 
 df = pd.read_csv(NAME+'.csv')
 df['hashtags'] = df['hashtags'].apply(string_to_list)
@@ -68,138 +68,149 @@ import matplotlib.cm as cm
 import matplotlib.colors as colors
 
 # Convertir 'user_created_at' a datetime si no lo es
-df['user_created_at'] = pd.to_datetime(df['user_created_at'])
+# df['user_created_at'] = pd.to_datetime(df['user_created_at'])
 
-# Crear un diccionario de user_id → fecha (timestamp numérico)
-user_dates = df[['user_id', 'user_created_at']].drop_duplicates()
-user_dates['timestamp'] = user_dates['user_created_at'].astype('int64')  # nanosegundos
-user_color_map = dict(zip(user_dates['user_id'], user_dates['timestamp']))
+# # Crear un diccionario de user_id → fecha (timestamp numérico)
+# user_dates = df[['user_id', 'user_created_at']].drop_duplicates()
+# user_dates['timestamp'] = user_dates['user_created_at'].astype('int64')  # nanosegundos
+# user_color_map = dict(zip(user_dates['user_id'], user_dates['timestamp']))
 
-# Normalizar a escala de colores
-timestamps = list(user_color_map.values())
-norm = colors.Normalize(vmin=min(timestamps), vmax=max(timestamps))
-cmap = cm.plasma  # puedes cambiar: 'viridis', 'plasma', etc.
+# timestamps = list(user_color_map.values())
+# norm = colors.Normalize(vmin=min(timestamps), vmax=max(timestamps))
 
-# Asignar colores a los nodos de usuario
-user_node_colors = [cmap(norm(user_color_map.get(n, min(timestamps)))) for n in user_nodes]
+# cmap = cm.plasma  # puedes cambiar: 'viridis', 'plasma', etc.
 
+# user_node_colors = [cmap(norm(user_color_map.get(n, min(timestamps)))) for n in user_nodes]
+
+
+# Agrupar por 'id' de usuarios y calcular el sentimiento mayoritario
+user_sentiment_map = (
+    df.groupby('user_id')['pysentimiento']  
+    .agg(lambda x: pd.Series.mode(x)[0])
+    .to_dict()
+)
 # Mapeo de sentimientos a colores
 sentiment_color_map = {
     'POS': 'lightgreen',
     'NEG': 'salmon',
     'NEU': 'lightblue'
 }
-
-# Diccionario: hashtag → color
 hashtag_color_dict = {
     row['hashtag']: sentiment_color_map.get(row['majority_sentiment'], 'gray')
     for _, row in hashtag_sentiment.iterrows()
 }
 
-# Diccionario: hashtag → tamaño del nodo
 max_count = hashtag_info['count'].max()
 hashtag_size_dict = {
-    row['hashtag']: 300 * (row['count'] / max_count) + 100  # escala entre 100 y 400
+    row['hashtag']: 100 * (row['count'] / max_count) + 10  # escala entre 100 y 400
     for _, row in hashtag_info.iterrows()
 }
 #%% DIBUJAR usando nx
-plt.figure(figsize=(20, 14))
-pos = nx.spring_layout(B, k=0.7, iterations=50, seed=42)
+# plt.figure(figsize=(20, 14))
+# pos = nx.spring_layout(B, k=0.7, iterations=50, seed=42)
 
-# pos = nx.circular_layout(B)
-# Colores y tamaños para hashtags
-hashtag_colors = [hashtag_color_dict.get(n, 'gray') for n in hashtag_nodes]
-hashtag_sizes = [hashtag_size_dict.get(n, 100) for n in hashtag_nodes]
+# # pos = nx.circular_layout(B)
+# # Colores y tamaños para hashtags
+# hashtag_colors = [hashtag_color_dict.get(n, 'gray') for n in hashtag_nodes]
+# hashtag_sizes = [hashtag_size_dict.get(n, 100) for n in hashtag_nodes]
 
-# Dibujar usuarios coloreados por antigüedad
-nx.draw_networkx_nodes(B, pos,
-                       nodelist=user_nodes,
-                       node_color=user_node_colors,
-                       node_size=40,
-                       alpha=0.7)
+# # Dibujar usuarios coloreados por antigüedad
+# nx.draw_networkx_nodes(B, pos,
+#                        nodelist=user_nodes,
+#                        node_color=user_node_colors,
+#                        node_size=40,
+#                        alpha=0.7)
 
-# Dibujar hashtags (coloreados y escalados)
-nx.draw_networkx_nodes(B, pos,
-                       nodelist=hashtag_nodes,
-                       node_color=hashtag_colors,
-                       node_size=hashtag_sizes,
-                       alpha=0.8)
+# # Dibujar hashtags (coloreados y escalados)
+# nx.draw_networkx_nodes(B, pos,
+#                        nodelist=hashtag_nodes,
+#                        node_color=hashtag_colors,
+#                        node_size=hashtag_sizes,
+#                        alpha=0.8)
 
-# Dibujar edges
-nx.draw_networkx_edges(B, pos,
-                       width=0.3,
-                       alpha=0.5,
-                       edge_color='gray')
+# # Dibujar edges
+# nx.draw_networkx_edges(B, pos,
+#                        width=0.3,
+#                        alpha=0.5,
+#                        edge_color='gray')
 
-# Dibujar etiquetas de hashtags con desplazamiento
-label_pos = {n: (x, y + 0.03) for n, (x, y) in pos.items() if n in hashtag_nodes}
-labels = {n: n for n in hashtag_nodes}
-nx.draw_networkx_labels(B, label_pos, labels,
-                        font_size=10,
-                        font_color='black')
+# # Dibujar etiquetas de hashtags con desplazamiento
+# label_pos = {n: (x, y + 0.03) for n, (x, y) in pos.items() if n in hashtag_nodes}
+# labels = {n: n for n in hashtag_nodes}
+# nx.draw_networkx_labels(B, label_pos, labels,
+#                         font_size=10,
+#                         font_color='black')
 
-plt.title("Red bipartita: usuarios coloreados por antigüedad, hashtags coloreados según sentimiento y tamaño según uso", fontsize=16)
-plt.axis('off')
-plt.tight_layout()
-plt.show()
+# plt.title("Red bipartita: usuarios coloreados por antigüedad, hashtags coloreados según sentimiento y tamaño según uso", fontsize=16)
+# plt.axis('off')
+# plt.tight_layout()
+# plt.show()
 # %% DIBUJAR USANDO PYVIS
 from pyvis.network import Network
 import networkx as nx
 
-# Crear red de Pyvis (con ancho y alto personalizados)
-net = Network(height='800px', width='100%', bgcolor='#ffffff', font_color='black')
+net = Network(height='800px', 
+              width='100%', 
+              bgcolor='#ffffff', 
+              font_color='black',
+              select_menu=True,
+              filter_menu=True
+              )
 B_cleaned = nx.Graph()
 
 for n, attrs in B.nodes(data=True):
     n_clean = str(n)
+    if attrs.get('bipartite') == 'hashtags':
+      label = str(n_clean)
+      attrs['label'] = label
     B_cleaned.add_node(n_clean, **attrs)
 
-# Copiar aristas, convirtiendo nodos también
 for u, v in B.edges():
     B_cleaned.add_edge(str(u), str(v))
     
-# Convertir el grafo de networkx a pyvis
-net.from_nx(B_cleaned)
+net.from_nx(B_cleaned) # Convertir el grafo de networkx a pyvis
 
-# Opcional: colorear nodos según tipo (bipartito) y dar más info al pasar el mouse
+# Colorear nodos según tipo y dar más info al pasar el mouse
 for node in net.nodes:
     tipo = B_cleaned.nodes[node['id']].get('bipartite')
-    if tipo == 'user':
-        node['color'] = 'blue'
+    if tipo == 'users':
+        sentiment = user_sentiment_map.get(float(node['id']), 'neutral')
+        color = {
+        'POS': 'lightgreen',
+        'NEG': 'salmon',
+        'NEU': 'lightblue'
+        }.get(sentiment, 'blue')
+        node['color'] = color
+        if color == 'green':
+            print(color)
+        # node['color'] = 'blue'
         user_info = df[df['user_id'] == node['id']].dropna(subset=['user_created_at'])
         if not user_info.empty:
             created = user_info['user_created_at'].iloc[0]
             node['title'] = f"Usuario creado en: {created}"
-    elif tipo == 'hashtag':
+    elif tipo == 'hashtags':
         node['color'] = 'green'
+        node['size'] = hashtag_size_dict.get(node['id'], 100)
+        # print(node['size'])
         node['title'] = f"Hashtag: {node['id']}"
 
-# Controlar layout (force-based interactivo)
 net.set_options("""
 var options = {
-  "layout": {
-    "improvedLayout": false
-  },
+  "layout": {"improvedLayout": false},
   "physics": {
     "forceAtlas2Based": {
       "gravitationalConstant": -30,
-      "centralGravity": 0.01,
-      "springLength": 100,
-      "springConstant": 0.05,
-      "avoidOverlap": 1
+      "centralGravity": 0.05,
+      "springLength": 120,
+      "springConstant": 0.08
     },
-    "minVelocity": 0.75,
     "solver": "forceAtlas2Based",
-    "timestep": 0.35,
-    "stabilization": {
-      "enabled": true,
-      "iterations": 150
-    }
+    "timestep": 0.1,
+    "stabilization": {"enabled": true, "iterations": 150}
   }
 }
-""")
-net.force_atlas_2based(gravity=-30, central_gravity=0.01, spring_length=100, spring_strength=0.05)
-# Mostrar (se guarda como HTML)
-net.show('red_interactiva.html')
+""")    
 
+# net.force_atlas_2based(gravity=-30, central_gravity=0.01, spring_length=100, spring_strength=0.05)
+net.show('red_interactiva.html', notebook=False)
 # %%
