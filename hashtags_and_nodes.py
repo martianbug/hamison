@@ -1,4 +1,5 @@
 #%% INTRO
+import webbrowser
 import pandas as pd
 from utilities import string_to_list, normalize_column
 import networkx as nx
@@ -155,9 +156,11 @@ for n, attrs in B.nodes(data=True):
 for u, v in B.edges():
     B_cleaned.add_edge(str(u), str(v))
     
-    
 partition = nx.community.greedy_modularity_communities(B_cleaned)
 modularity = nx.community.modularity(B_cleaned, partition)
+degree_centrality = nx.degree_centrality(B_cleaned)
+betweenness_centrality = nx.betweenness_centrality(B_cleaned, normalized=True)
+
 print(f"Modularity: {modularity}")
 
 num_communities = len(partition)
@@ -176,8 +179,6 @@ for node in B_cleaned.nodes():
         rgba = colormap(community_id)
         color = mcolors.to_hex(rgba)
         
-
-
 #%%
 for node in net.nodes:
     tipo = B_cleaned.nodes[node['id']].get('bipartite')
@@ -188,6 +189,9 @@ for node in net.nodes:
         # 'NEG': 'salmon',
         # 'NEU': 'lightblue'
         # }.get(sentiment, 'blue')
+        deg_cent = degree_centrality.get(node['id'], 0)
+        size = 10 + deg_cent * 40  # tamaño mínimo 10, aumenta con centralidad
+        node['size'] = size
         
         community_id = community_map.get(node['id'], -1)  # -1 si no se encuentra
         color = '#dddddd'  # default gray
@@ -202,9 +206,12 @@ for node in net.nodes:
             node['title'] = f"Usuario creado en: {created}"
     elif tipo == 'hashtags':
         node['color'] = 'green'
-        node['size'] = hashtag_size_dict.get(node['id'], 100)
+        deg_cent = degree_centrality.get(node['id'], 0)
+        size = 10 + deg_cent * 40  # tamaño mínimo 10, aumenta con centralidad
+        node['size'] = size
+        # node['size'] = hashtag_size_dict.get(node['id'], 100)
         node['title'] = f"Hashtag: {node['id']}"
-
+#%%
 net.set_options("""
 var options = {
   "layout": {"improvedLayout": false},
@@ -223,16 +230,16 @@ var options = {
 """)    
 
 # net.force_atlas_2based(gravity=-30, central_gravity=0.01, spring_length=100, spring_strength=0.05)
-net.show('red_interactiva.html', notebook = False)
-# %%
+# net.show('red_interactiva.html', notebook = False)
 # Insertar título modificando el HTML generado
-with open('red_interactiva.html', 'r', encoding='utf-8') as f:
+with open('red_interactiva.html', 'r') as f:
     html = f.read()
 
-titulo = f"<h2 style='text-align:center;'>Red de usuarios y hashtags según sentimiento con {NUMBER_OF_NODES} nodos. Coloreado segun molaridad</h2>"
+titulo = f"<h2 style='text-align:center;'>Red de usuarios y hashtags con {NUMBER_OF_NODES} nodos.</h2>"
+titulo += "<h3 style='text-align:center;'>Coloreados según modularidad con centralidad</h3>"
 html = html.replace('<body>', f'<body>{titulo}', 1)
 
-# Guardar el HTML modificado
 with open('red_interactiva_con_titulo.html', 'w', encoding='utf-8') as f:
     f.write(html)
+webbrowser.open('red_interactiva_con_titulo.html')
 # %%
