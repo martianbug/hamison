@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 DATE = '06_05'
 NAME = 'dataset_' + DATE
 COLUMN_TO_ANALYZE = 'pysentimiento'
-NUMBER_OF_NODES = 3000
+NUMBER_OF_NODES =  2500
 
 df = pd.read_csv(NAME+'.csv')
 df['hashtags'] = df['hashtags'].apply(string_to_list)
@@ -67,22 +67,6 @@ hashtag_info = pd.merge(hashtag_sentiment, hashtag_counts, on='hashtag')
 import matplotlib.cm as cm
 import matplotlib.colors as colors
 
-# Convertir 'user_created_at' a datetime si no lo es
-# df['user_created_at'] = pd.to_datetime(df['user_created_at'])
-
-# # Crear un diccionario de user_id → fecha (timestamp numérico)
-# user_dates = df[['user_id', 'user_created_at']].drop_duplicates()
-# user_dates['timestamp'] = user_dates['user_created_at'].astype('int64')  # nanosegundos
-# user_color_map = dict(zip(user_dates['user_id'], user_dates['timestamp']))
-
-# timestamps = list(user_color_map.values())
-# norm = colors.Normalize(vmin=min(timestamps), vmax=max(timestamps))
-
-# cmap = cm.plasma  # puedes cambiar: 'viridis', 'plasma', etc.
-
-# user_node_colors = [cmap(norm(user_color_map.get(n, min(timestamps)))) for n in user_nodes]
-
-
 # Agrupar por 'id' de usuarios y calcular el sentimiento mayoritario
 user_sentiment_map = (
     df.groupby('user_id')['pysentimiento']  
@@ -105,6 +89,7 @@ hashtag_size_dict = {
     row['hashtag']: 100 * (row['count'] / max_count) + 10  # escala entre 100 y 400
     for _, row in hashtag_info.iterrows()
 }
+
 #%% DIBUJAR usando nx
 # plt.figure(figsize=(20, 14))
 # pos = nx.spring_layout(B, k=0.7, iterations=50, seed=42)
@@ -148,6 +133,7 @@ hashtag_size_dict = {
 # %% DIBUJAR USANDO PYVIS
 from pyvis.network import Network
 import networkx as nx
+import matplotlib.colors as mcolors
 
 net = Network(height='800px', 
               width='100%', 
@@ -156,6 +142,7 @@ net = Network(height='800px',
               select_menu=True,
               filter_menu=True
               )
+
 B_cleaned = nx.Graph()
 
 for n, attrs in B.nodes(data=True):
@@ -168,22 +155,47 @@ for n, attrs in B.nodes(data=True):
 for u, v in B.edges():
     B_cleaned.add_edge(str(u), str(v))
     
+    
+partition = nx.community.greedy_modularity_communities(B_cleaned)
+modularity = nx.community.modularity(B_cleaned, partition)
+print(f"Modularity: {modularity}")
+
+num_communities = len(partition)
+colormap = cm.get_cmap('tab20', num_communities) 
+community_map = {}
+for i, community in enumerate(partition):
+    for node in community:
+        community_map[node] = i
+
 net.from_nx(B_cleaned) # Convertir el grafo de networkx a pyvis
 
-# Colorear nodos según tipo y dar más info al pasar el mouse
+for node in B_cleaned.nodes():
+    community_id = community_map.get(node, -1)  # -1 si no se encuentra
+    color = '#dddddd'  # default gray
+    if community_id >= 0:
+        rgba = colormap(community_id)
+        color = mcolors.to_hex(rgba)
+        
+
+
+#%%
 for node in net.nodes:
     tipo = B_cleaned.nodes[node['id']].get('bipartite')
     if tipo == 'users':
-        sentiment = user_sentiment_map.get(float(node['id']), 'neutral')
-        color = {
-        'POS': 'lightgreen',
-        'NEG': 'salmon',
-        'NEU': 'lightblue'
-        }.get(sentiment, 'blue')
+        # sentiment = user_sentiment_map.get(float(node['id']), 'neutral')
+        # color = {
+        # 'POS': 'lightgreen',
+        # 'NEG': 'salmon',
+        # 'NEU': 'lightblue'
+        # }.get(sentiment, 'blue')
+        
+        community_id = community_map.get(node['id'], -1)  # -1 si no se encuentra
+        color = '#dddddd'  # default gray
+        if community_id >= 0:
+            rgba = colormap(community_id)
+            color = mcolors.to_hex(rgba)
+
         node['color'] = color
-        if color == 'green':
-            print(color)
-        # node['color'] = 'blue'
         user_info = df[df['user_id'] == node['id']].dropna(subset=['user_created_at'])
         if not user_info.empty:
             created = user_info['user_created_at'].iloc[0]
@@ -191,7 +203,6 @@ for node in net.nodes:
     elif tipo == 'hashtags':
         node['color'] = 'green'
         node['size'] = hashtag_size_dict.get(node['id'], 100)
-        # print(node['size'])
         node['title'] = f"Hashtag: {node['id']}"
 
 net.set_options("""
@@ -212,5 +223,16 @@ var options = {
 """)    
 
 # net.force_atlas_2based(gravity=-30, central_gravity=0.01, spring_length=100, spring_strength=0.05)
-net.show('red_interactiva.html', notebook=False)
+net.show('red_interactiva.html', notebook = False)
+# %%
+# Insertar título modificando el HTML generado
+with open('red_interactiva.html', 'r', encoding='utf-8') as f:
+    html = f.read()
+
+titulo = f"<h2 style='text-align:center;'>Red de usuarios y hashtags según sentimiento con {NUMBER_OF_NODES} nodos. Coloreado segun molaridad</h2>"
+html = html.replace('<body>', f'<body>{titulo}', 1)
+
+# Guardar el HTML modificado
+with open('red_interactiva_con_titulo.html', 'w', encoding='utf-8') as f:
+    f.write(html)
 # %%
