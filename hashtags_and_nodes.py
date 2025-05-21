@@ -3,12 +3,11 @@ import webbrowser
 import pandas as pd
 from utilities import string_to_list, normalize_column
 import networkx as nx
-import matplotlib.pyplot as plt
 
 DATE = '06_05'
 NAME = 'dataset_' + DATE
 COLUMN_TO_ANALYZE = 'pysentimiento'
-NUMBER_OF_NODES =  2500
+NUMBER_OF_NODES =  5000
 
 df = pd.read_csv(NAME+'.csv')
 df['hashtags'] = df['hashtags'].apply(string_to_list)
@@ -22,14 +21,13 @@ df_filtered = df_exploded[df_exploded['hashtags'].isin(top_hashtags)]
 edges_df = df_filtered[['user_id', 'hashtags']].dropna().drop_duplicates()
 edges_df.columns = ['user', 'hashtag'] 
 
-B = nx.Graph() # Crear un grafo bipartito
-
 selection_test = edges_df.sample(NUMBER_OF_NODES)
 edges_df = selection_test.copy()
 
 users = edges_df['user'].unique()
 hashtags = edges_df['hashtag'].unique()
 
+B = nx.Graph()
 B.add_nodes_from(users, bipartite='users', color = 'blue')
 B.add_nodes_from(hashtags, bipartite='hashtags', color = 'green')
 
@@ -63,10 +61,8 @@ hashtag_counts.columns = ['hashtag', 'count']
 
 # Unir en un solo DataFrame
 hashtag_info = pd.merge(hashtag_sentiment, hashtag_counts, on='hashtag')
-
 #%% COLOREAR SEGÚN FECHA DE CREACIÓN DEL USUARIO Y SENTIMIENTO DEL HASHTAG
 import matplotlib.cm as cm
-import matplotlib.colors as colors
 
 # Agrupar por 'id' de usuarios y calcular el sentimiento mayoritario
 user_sentiment_map = (
@@ -90,8 +86,8 @@ hashtag_size_dict = {
     row['hashtag']: 100 * (row['count'] / max_count) + 10  # escala entre 100 y 400
     for _, row in hashtag_info.iterrows()
 }
-
 #%% DIBUJAR usando nx
+# import matplotlib.pyplot as plt
 # plt.figure(figsize=(20, 14))
 # pos = nx.spring_layout(B, k=0.7, iterations=50, seed=42)
 
@@ -131,6 +127,7 @@ hashtag_size_dict = {
 # plt.axis('off')
 # plt.tight_layout()
 # plt.show()
+
 # %% DIBUJAR USANDO PYVIS
 from pyvis.network import Network
 import networkx as nx
@@ -159,9 +156,8 @@ for u, v in B.edges():
 partition = nx.community.greedy_modularity_communities(B_cleaned)
 modularity = nx.community.modularity(B_cleaned, partition)
 degree_centrality = nx.degree_centrality(B_cleaned)
-betweenness_centrality = nx.betweenness_centrality(B_cleaned, normalized=True)
-
-print(f"Modularity: {modularity}")
+# betweenness_centrality = nx.betweenness_centrality(B_cleaned, normalized=True)
+# nx.set_node_attributes(B_cleaned, degree_centrality, 'centrality')
 
 num_communities = len(partition)
 colormap = cm.get_cmap('tab20', num_communities) 
@@ -179,7 +175,7 @@ for node in B_cleaned.nodes():
         rgba = colormap(community_id)
         color = mcolors.to_hex(rgba)
         
-#%%
+#%% ADD NODES
 for node in net.nodes:
     tipo = B_cleaned.nodes[node['id']].get('bipartite')
     if tipo == 'users':
@@ -189,10 +185,9 @@ for node in net.nodes:
         # 'NEG': 'salmon',
         # 'NEU': 'lightblue'
         # }.get(sentiment, 'blue')
-        deg_cent = degree_centrality.get(node['id'], 0)
-        size = 10 + deg_cent * 40  # tamaño mínimo 10, aumenta con centralidad
-        node['size'] = size
-        
+        # deg_cent = degree_centrality.get(node['id'], 0)
+        # size = 10 + deg_cent * 40  # tamaño mínimo 10, aumenta con centralidad
+        # node['size'] = size
         community_id = community_map.get(node['id'], -1)  # -1 si no se encuentra
         color = '#dddddd'  # default gray
         if community_id >= 0:
@@ -205,7 +200,9 @@ for node in net.nodes:
             created = user_info['user_created_at'].iloc[0]
             node['title'] = f"Usuario creado en: {created}"
     elif tipo == 'hashtags':
-        node['color'] = 'green'
+        # node['color'] = 'green'
+        node['color'] = hashtag_color_dict.get(node['id'], 'gray')
+        print(node['color'])
         deg_cent = degree_centrality.get(node['id'], 0)
         size = 10 + deg_cent * 40  # tamaño mínimo 10, aumenta con centralidad
         node['size'] = size
@@ -230,13 +227,15 @@ var options = {
 """)    
 
 # net.force_atlas_2based(gravity=-30, central_gravity=0.01, spring_length=100, spring_strength=0.05)
-# net.show('red_interactiva.html', notebook = False)
+net.show('red_interactiva.html', notebook = False)
+
+#%%
 # Insertar título modificando el HTML generado
 with open('red_interactiva.html', 'r') as f:
     html = f.read()
 
 titulo = f"<h2 style='text-align:center;'>Red de usuarios y hashtags con {NUMBER_OF_NODES} nodos.</h2>"
-titulo += "<h3 style='text-align:center;'>Coloreados según modularidad con centralidad</h3>"
+titulo += "<h3 style='text-align:center;'>Coloreados según modularidad. Tamaño nodos centrales según centralidad</h3>"
 html = html.replace('<body>', f'<body>{titulo}', 1)
 
 with open('red_interactiva_con_titulo.html', 'w', encoding='utf-8') as f:
