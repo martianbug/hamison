@@ -57,11 +57,18 @@ for _, row in df_relaciones.iterrows():
     # G.nodes[uid]['user_age_days'] = row['user_age_days']
     # G.nodes[uid]['class'] = row['class']
 
+
+#%% Algorithms calculations 
+from cdlib import algorithms
+coms = algorithms.louvain(G.to_undirected(), weight="weight", resolution=1., randomize=False)
+
+coms = algorithms.leiden(G)
+coms = algorithms.walktrap(G)
 partition = nx.community.greedy_modularity_communities(G)
 modularity = nx.community.modularity(G, partition)
 degree_centrality = nx.degree_centrality(G)
 # betweenness_centrality = nx.betweenness_centrality(B_cleaned, normalized=True)
-# nx.set_node_attributes(B_cleaned, degree_centrality, 'centrality')
+nx.set_node_attributes(G, degree_centrality, 'centrality')
 
 nx.write_gexf(G, "retweet_graph.gexf") #para visualizar en Gephi
     
@@ -69,6 +76,17 @@ nx.write_gexf(G, "retweet_graph.gexf") #para visualizar en Gephi
 from pyvis.network import Network
 import networkx as nx
 import matplotlib.colors as mcolors
+
+def create_community_colors(partition):
+    num_communities = len(partition)
+
+    colormap = cm.get_cmap('tab20', num_communities) 
+    community_map = {}
+    for i, community in enumerate(partition):
+        for node in community:
+            community_map[node] = i
+    return colormap, community_map
+
 
 net = Network(height='800px', 
               width='100%', 
@@ -88,34 +106,23 @@ for u, v, data in G.edges(data=True):
     delay = data['weight']
     strength = 1 / delay  # retweets más rápidos = mayor fuerza
     B_cleaned.add_edge(str(u), str(v), value=strength, title=f"Retweet delay: {delay:.2f} min")
-    
-partition = nx.community.greedy_modularity_communities(B_cleaned, best_n = 150, resolution = 0.5)
-modularity = nx.community.modularity(B_cleaned, partition)
-degree_centrality = nx.degree_centrality(B_cleaned)
 
-betweenness_centrality = nx.betweenness_centrality(B_cleaned, normalized=True)
-
-def create_community_colors(partition):
-    num_communities = len(partition)
-
-    colormap = cm.get_cmap('tab20', num_communities) 
-    community_map = {}
-    for i, community in enumerate(partition):
-        for node in community:
-            community_map[node] = i
-    return colormap,community_map
-
-def create_date_creation_colors(partition):
+def create_date_creation_colors(df):
     dates = df['user_created_at'].dropna().unique()
-    colormap = cm.get_cmap('tab20', dates.size) 
+    colormap = cm.get_cmap('tab20', len(dates)) 
     dates_map = {}
-    for i, date in df[['user_created_at', 'user_id']].dropna().items():
-        print(i, date)
-        dates_map[str(i)] = date
-    return colormap, dates_map
+    dates_map = {date: mcolors.to_hex(colormap(i)) for i, date in enumerate(dates)}
+    user_color_map = {}
+    for _, row in df.iterrows():
+        user_id = row['user_id']
+        created_at = row['user_created_at']
+        if pd.notna(created_at):
+            user_color_map[user_id] = dates_map[created_at]
+            
+    return colormap, user_color_map
 
 # colormap, community_map = create_community_colors(partition)
-colormap, dates_map = create_date_creation_colors(partition)
+colormap, dates_map = create_date_creation_colors(df)
 
 
 #%%
@@ -131,8 +138,8 @@ for node in net.nodes:
         #     rgba = colormap(community_id)
         #     color = mcolors.to_hex(rgba)
         
-        community_id = dates_map.get(node['id'], -1)  # -1 si no se encuentra
-        rgba = colormap(node['id'])
+        date_id = dates_map.get(node['id'], -1)  # -1 si no se encuentra
+        rgba = colormap(date_id)
         color = mcolors.to_hex(rgba)
         node['color'] = color
         
