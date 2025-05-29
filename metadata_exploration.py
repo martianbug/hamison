@@ -15,10 +15,11 @@ def classify_node(row):
 DATE = '26_05'
 NAME = 'dataset_' + DATE
 COLUMN_TO_ANALYZE = 'pysentimiento'
-SUBSET_SIZE =  300
+SUBSET_SIZE =  1000
 
 df = pd.read_csv(NAME + '.csv')
 df_filtered = df.sample(SUBSET_SIZE)
+
 df = df_filtered.copy()
 
 user_post_counts = df['user_id'].value_counts().rename('num_posts')
@@ -45,15 +46,12 @@ G = nx.DiGraph()
 for _, row in df_relaciones.iterrows():
     source = row['user_id']
     target = row['rt_user_id']
-    
     delay = row['retweet_delay']
     
     uid = row['user_id']
     if not G.has_node(uid):
         G.add_node(uid)
-    
     G.add_edge(source, target, weight=delay)
-
     # G.nodes[uid]['user_age_days'] = row['user_age_days']
     # G.nodes[uid]['class'] = row['class']
 
@@ -62,9 +60,7 @@ modularity = nx.community.modularity(G, partition)
 degree_centrality = nx.degree_centrality(G)
 # betweenness_centrality = nx.betweenness_centrality(B_cleaned, normalized=True)
 # nx.set_node_attributes(B_cleaned, degree_centrality, 'centrality')
-
 nx.write_gexf(G, "retweet_graph.gexf") #para visualizar en Gephi
-    
 #%% %% DIBUJAR USANDO PYVIS
 from pyvis.network import Network
 import networkx as nx
@@ -86,7 +82,7 @@ for n, attrs in G.nodes(data=True):
 
 for u, v, data in G.edges(data=True):
     delay = data['weight']
-    strength = 1 / delay  # retweets más rápidos = mayor fuerza
+    strength = 1 / delay *1000 # retweets más rápidos = mayor fuerza
     B_cleaned.add_edge(str(u), str(v), value=strength, title=f"Retweet delay: {delay:.2f} min")
     
 partition = nx.community.greedy_modularity_communities(B_cleaned, best_n = 150, resolution = 0.5)
@@ -110,7 +106,6 @@ def create_date_creation_colors(partition):
     colormap = cm.get_cmap('tab20', dates.size) 
     dates_map = {}
     for i, date in df[['user_created_at', 'user_id']].dropna().items():
-        print(i, date)
         dates_map[str(i)] = date
     return colormap, dates_map
 
@@ -125,18 +120,17 @@ for node in net.nodes:
         deg_cent = degree_centrality.get(node['id'], 0)
         size = 10 + deg_cent * 2000  # tamaño mínimo 10, aumenta con centralidad
         node['size'] = size
-        
         # community_id = community_map.get(node['id'], -1)  # -1 si no se encuentra
         # if community_id >= 0:
         #     rgba = colormap(community_id)
         #     color = mcolors.to_hex(rgba)
         
-        community_id = dates_map.get(node['id'], -1)  # -1 si no se encuentra
-        rgba = colormap(node['id'])
+        # community_id = dates_map.get(node['id'], -1)  # -1 si no se encuentra
+        rgba = colormap(float(node['id']))
         color = mcolors.to_hex(rgba)
         node['color'] = color
         
-        user_info = df[df['user_id'] == node['id']].dropna(subset=['user_created_at'])
+        user_info = df[df['user_id'] == float(node['id'])].dropna(subset=['user_created_at'])
         if not user_info.empty:
             created = user_info['user_created_at'].iloc[0]
             node['title'] = f"Usuario creado en: {created}"
