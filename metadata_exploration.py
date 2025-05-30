@@ -15,10 +15,43 @@ def classify_node(row):
 DATE = '26_05'
 NAME = 'dataset_' + DATE
 COLUMN_TO_ANALYZE = 'pysentimiento'
-SUBSET_SIZE =  1000
+SUBSET_SIZE = 1000 #coer subset determinado
+
+# num de repeticiones//ordenar usuarios por sentimiento
+# crear un csv de usuarios con metricas: num publicaciones, num retweets, sent agregado/emocion agregada, lista de ids de mensajes/num RT que hacen o reciben/buscar metricas de centralidad o de data analysis
+# lista de ids de usuarios que ha RT. ordenar por oorden deRT.
+
+#  en el primer csv: csv id de mensaje - usuario id : para crear esos edges
 
 df = pd.read_csv(NAME + '.csv')
-df_filtered = df.sample(SUBSET_SIZE)
+df['user_id'] = df['user_id'].astype(str)
+df['rt_user_id'] = df['rt_user_id'].astype(str)
+
+user_names = df.groupby('user_id').agg(
+    user_name=('user_name', 'first')
+).reset_index()
+
+tweets_por_usuario = df.groupby('user_id').agg(
+    num_tweets=('id', 'count'),
+    tweet_ids=('id', lambda x: list(x))
+).reset_index()
+
+retweets_hechos = df[df['rt_user_id'].notna()].groupby('user_id').agg(
+    num_retweets=('rt_user_id', 'count'),
+    retweet_ids=('id', lambda x: list(x))
+).reset_index()
+
+
+df_usuarios = (
+    tweets_por_usuario
+    .merge(retweets_hechos, on='user_id', how='outer')
+    .merge(user_names, on='user_id', how='left')
+    .fillna({'num_retweets': 0, 'retweet_ids': ''})
+)
+
+df_usuarios['num_retweets'] = df_usuarios['num_retweets'].astype(int)
+
+df_filtered = df.sample(SUBSET_SIZE, random_state=42)
 
 df = df_filtered.copy()
 
@@ -58,11 +91,13 @@ for _, row in df_relaciones.iterrows():
 
 #%% Algorithms calculations 
 from cdlib import algorithms
+coms = algorithms.leiden(G)
 coms = algorithms.louvain(G.to_undirected(), weight="weight", resolution=1., randomize=False)
 
-coms = algorithms.leiden(G)
 coms = algorithms.walktrap(G)
-partition = nx.community.greedy_modularity_communities(G)
+partition = coms.communities  
+partition = nx.community.greedy_modularity_communities(G, weight='weight')
+# partition = nx.community.asyn_lpa_communities(G, weight='weight', seed=42)
 modularity = nx.community.modularity(G, partition)
 degree_centrality = nx.degree_centrality(G)
 # betweenness_centrality = nx.betweenness_centrality(B_cleaned, normalized=True)
@@ -73,10 +108,8 @@ nx.write_gexf(G, "retweet_graph.gexf") #para visualizar en Gephi
 from pyvis.network import Network
 import networkx as nx
 import matplotlib.colors as mcolors
-
 def create_community_colors(partition):
     num_communities = len(partition)
-
     colormap = cm.get_cmap('tab20', num_communities) 
     community_map = {}
     for i, community in enumerate(partition):
@@ -84,6 +117,18 @@ def create_community_colors(partition):
             community_map[node] = i
     return colormap, community_map
 
+def create_date_creation_colors(df):
+    dates = df['user_created_at'].dropna().unique()
+    colormap = cm.get_cmap('tab20', len(dates)) 
+    dates_map = {}
+    dates_map = {date: mcolors.to_hex(colormap(i)) for i, date in enumerate(dates)}
+    user_color_map = {}
+    for _, row in df.iterrows():
+        user_id = row['user_id']
+        created_at = row['user_created_at']
+        if pd.notna(created_at):
+            user_color_map[user_id] = dates_map[created_at]
+    return colormap, user_color_map
 
 net = Network(height='800px', 
               width='100%', 
@@ -101,26 +146,11 @@ for n, attrs in G.nodes(data=True):
 
 for u, v, data in G.edges(data=True):
     delay = data['weight']
-    strength = 1 / delay *1000 # retweets más rápidos = mayor fuerza
+    strength = 1 / delay*1000 # retweets más rápidos = mayor fuerza
     B_cleaned.add_edge(str(u), str(v), value=strength, title=f"Retweet delay: {delay:.2f} min")
-
-def create_date_creation_colors(df):
-    dates = df['user_created_at'].dropna().unique()
-    colormap = cm.get_cmap('tab20', len(dates)) 
-    dates_map = {}
-    dates_map = {date: mcolors.to_hex(colormap(i)) for i, date in enumerate(dates)}
-    user_color_map = {}
-    for _, row in df.iterrows():
-        user_id = row['user_id']
-        created_at = row['user_created_at']
-        if pd.notna(created_at):
-            user_color_map[user_id] = dates_map[created_at]
-            
-    return colormap, user_color_map
 
 # colormap, community_map = create_community_colors(partition)
 colormap, dates_map = create_date_creation_colors(df)
-
 
 #%%
 net.from_nx(B_cleaned) # Convertir el grafo de networkx a pyvis
@@ -129,16 +159,16 @@ for node in net.nodes:
         deg_cent = degree_centrality.get(node['id'], 0)
         size = 10 + deg_cent * 2000  # tamaño mínimo 10, aumenta con centralidad
         node['size'] = size
+        #TODO: pintar nombres de usuarios
+        
         # community_id = community_map.get(node['id'], -1)  # -1 si no se encuentra
         # if community_id >= 0:
         #     rgba = colormap(community_id)
         #     color = mcolors.to_hex(rgba)
-        
-        date_id = dates_map.get(node['id'], -1)  # -1 si no se encuentra
+        date_id = dates_map.get(float(node['id']), -1)  # -1 si n  o se encuentra
         rgba = colormap(date_id)
         color = mcolors.to_hex(rgba)
         node['color'] = color
-        
         user_info = df[df['user_id'] == float(node['id'])].dropna(subset=['user_created_at'])
         if not user_info.empty:
             created = user_info['user_created_at'].iloc[0]
