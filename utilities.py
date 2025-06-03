@@ -1,8 +1,5 @@
 import ast
 
-
-
-# Preprocess text (username and link placeholders)
 def preprocess(text):
     new_text = []
     for t in text.split(" "):
