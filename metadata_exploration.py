@@ -3,6 +3,7 @@ import webbrowser
 import pandas as pd
 import networkx as nx
 import matplotlib.cm as cm
+import numpy as np
 
 def classify_node(row):
     if row['num_posts'] > 20 and row['user_age_days'] > 1000:
@@ -14,42 +15,60 @@ def classify_node(row):
 
 DATE = '26_05'
 NAME = 'dataset_' + DATE
-COLUMN_TO_ANALYZE = 'pysentimiento'
-SUBSET_SIZE = 1000 #coer subset determinado
+SUBSET_SIZE = 1000
 
 # num de repeticiones//ordenar usuarios por sentimiento
+
 # crear un csv de usuarios con metricas: num publicaciones, num retweets, sent agregado/emocion agregada, lista de ids de mensajes/num RT que hacen o reciben/buscar metricas de centralidad o de data analysis
 # lista de ids de usuarios que ha RT. ordenar por oorden deRT.
 
 #  en el primer csv: csv id de mensaje - usuario id : para crear esos edges
 
 df = pd.read_csv(NAME + '.csv')
+df = df[df['lang'].isin(['es'])]
+
 df['user_id'] = df['user_id'].astype(str)
-df['rt_user_id'] = df['rt_user_id'].astype(str)
+df['rt_user_id'] = df['rt_user_id'].replace(['', 'None', None, 0], np.nan)
 
-user_names = df.groupby('user_id').agg(
-    user_name=('user_name', 'first')
-).reset_index()
+only_tweets = df[df['rt_user_id'].isna()]
+retweets_df = df[df['rt_user_id'].notna()]
 
-tweets_por_usuario = df.groupby('user_id').agg(
-    num_tweets=('id', 'count'),
-    tweet_ids=('id', lambda x: list(x))
-).reset_index()
+retweets_df['rt_user_id'] = retweets_df['rt_user_id'].astype('Int64')
 
-retweets_hechos = df[df['rt_user_id'].notna()].groupby('user_id').agg(
-    num_retweets=('rt_user_id', 'count'),
-    retweet_ids=('id', lambda x: list(x))
-).reset_index()
+user_names = df.groupby('user_id').agg(user_name=('user_name', 'first'))
+user_names = df[['user_id', 'user_name']]
 
+tweets_por_usuario = only_tweets.groupby('user_id').agg(num_tweets=('id', 'count'), tweet_ids=('id', lambda x: list(x))).reset_index()
+
+retweeters_por_usuario = (
+    retweets_df.groupby('rt_user_id')['user_id']
+    .nunique()
+    .reset_index()
+    .rename(columns={'rt_user_id': 'original_user_id', 'user_id': 'num_retweeters'})
+)
+retweets_por_usuario = retweets_df.groupby('user_id').agg(num_retweets=('id', 'count'), retweet_ids=('id', lambda x: list(x))).reset_index()
+
+retweeters_por_usuario['user_name'] = retweeters_por_usuario['original_user_id'].map(
+    user_names.set_index('user_id')['user_name']
+)
+retweeters_por_usuario['user_id'] = retweeters_por_usuario['user_id'].astype(str)
+
+retweeters_por_usuario['user_name'] = retweeters_por_usuario['user_id'].map(user_names)
+
+retweeters_por_usuario['user_name']= retweeters_por_usuario.user_id.map(user_names.squeeze())
+
+retweeters_por_usuario = retweeters_por_usuario.sort_values(by='num_retweeters', ascending=False)
+
+print(retweeters_por_usuario.head())
 
 df_usuarios = (
     tweets_por_usuario
-    .merge(retweets_hechos, on='user_id', how='outer')
+    .merge(retweets_por_usuario, on='user_id', how='outer')
     .merge(user_names, on='user_id', how='left')
     .fillna({'num_retweets': 0, 'retweet_ids': ''})
 )
 
-df_usuarios['num_retweets'] = df_usuarios['num_retweets'].astype(int)
+df_top_RT = df_usuarios.sort_values(by='num_retweets', ascending=False).head(SUBSET_SIZE)
 
 df_filtered = df.sample(SUBSET_SIZE, random_state=42)
 
@@ -93,7 +112,6 @@ for _, row in df_relaciones.iterrows():
 from cdlib import algorithms
 coms = algorithms.leiden(G)
 coms = algorithms.louvain(G.to_undirected(), weight="weight", resolution=1., randomize=False)
-
 coms = algorithms.walktrap(G)
 partition = coms.communities  
 partition = nx.community.greedy_modularity_communities(G, weight='weight')
