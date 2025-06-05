@@ -14,24 +14,26 @@ def classify_node(row):
         return 'peripheral'
 
 DATE = '26_05'
-DATE = '04_06'
+# DATE = '04_06'
 
 NAME = 'dataset_' + DATE
 SUBSET_SIZE = 1000
 
 # num de repeticiones//ordenar usuarios por sentimiento
 
-# crear un csv de usuarios con metricas: num publicaciones, num retweets, lista de ids de mensajes
-# sentimiento agregado/emocion agregada,
-# num RT que hacen o reciben/buscar metricas de centralidad o de data analysis
-# lista de ids de usuarios que ha RT. ordenar por oorden deRT.
+# crear un csv de usuarios con metricas: num publicaciones, num retweets, lista de ids de mensajes, sentimiento agregado/emocion agregada, num RT que hacen  
+# num rt que reciben/
+# buscar metricas de centralidad o de data analysis
+# lista de ids de usuarios que ha RT. ordenar por cantidad orden de RT.
 
 #  en el primer csv: csv id de mensaje - usuario id : para crear esos edges
 
+#TODO: me falta informacion de los edges que necesitamos: respuestas? x ej
+
 df = pd.read_csv(NAME + '.csv')
+df = df[df['lang'].isin(['es'])]
 df2 = pd.read_csv('dataset_06_05' + '.csv')
 
-df = df[df['lang'].isin(['es'])]
 
 df['user_id'] = df['user_id'].astype(str)
 df['rt_user_id'] = df['rt_user_id'].replace(['', 'None', None, 0], np.nan)
@@ -46,13 +48,14 @@ user_names = df.groupby('user_id').agg(user_name=('user_name', 'first'))
 tweets_por_usuario = only_tweets.groupby('user_id').agg(num_tweets=('id', 'count'), tweet_ids=('id', lambda x: list(x))).reset_index()
 retweets_por_usuario = retweets_df.groupby('user_id').agg(num_retweets=('id', 'count'), retweet_ids=('id', lambda x: list(x))).reset_index()
 
-# retweeters_por_usuario = (
-#     retweets_df.groupby('rt_user_id')['user_id']
-#     .nunique()
-#     .reset_index()
-#     .rename(columns={'rt_user_id': 'original_user_id', 'user_id': 'num_retweeters'})
-# )
-# retweeters_por_usuario['user_id'] = retweeters_por_usuario['user_id'].astype(str)
+retweeters_por_usuario = (
+    retweets_df.groupby('rt_user_id')['user_id']
+    .nunique()
+    .reset_index()
+    .rename(columns={'rt_user_id': 'original_user_id', 'user_id': 'num_retweeters'})
+) #el problema es que devuelve otros usuarios retweeteados??
+retweeters_por_usuario.merge(retweets_df['user_name'], left_on='original_user_id', right_index=True, how='left')
+
 # retweeters_por_usuario['user_name']= retweeters_por_usuario.user_id.map(user_names.squeeze())
 # retweeters_por_usuario = retweeters_por_usuario.sort_values(by='num_retweeters', ascending=False)
 # print(retweeters_por_usuario.head())
@@ -61,41 +64,41 @@ df_usuarios = (
     tweets_por_usuario
     .merge(retweets_por_usuario, on='user_id', how='outer')
     .merge(user_names, on='user_id', how='left')
+    .merge(df.groupby('user_id').agg(
+        majority_sentiment = ('pysentimiento', lambda x: pd.Series.mode(x)[0]),
+    ), on='user_id', how='left')
     .fillna({'num_retweets': 0, 'retweet_ids': ''})
 )
+
 print(df_usuarios.sample(SUBSET_SIZE, random_state=42))
 
 df_top_RT = df_usuarios.sort_values(by='num_retweets', ascending=False).head(SUBSET_SIZE)
+#%% Little interaction for user names
+user_name = input("Introduce el nombre de usuario para filtrar: ")
+if user_name:
+    print(df_usuarios[df_usuarios['user_name'].str.contains(user_name, case=False, na=False)])
 
-df_filtered = df.sample(SUBSET_SIZE, random_state=42)
-df = df_filtered.copy()
 
-user_post_counts = df['user_id'].value_counts().rename('num_posts')
-df = df.merge(user_post_counts, left_on='user_id', right_index=True)
-
-#Edge strengh according to retweet time
-
+#%% Grapgh creation
+# Edge strengh according to retweet time
 df['created_at'] = pd.to_datetime(df['created_at'])
 df['rt_status_created_at'] = pd.to_datetime(df['rt_status_created_at'])
 df_retweets_with_time = df.dropna(subset=['rt_user_id', 'rt_status_created_at'])
 
 df['retweet_delay'] = (df_retweets_with_time['created_at'] - df_retweets_with_time['rt_status_created_at']).dt.total_seconds() / 60
-
 df['user_created_at'] = pd.to_datetime(df['user_created_at']).dt.tz_localize(None)
 df['user_age_days'] = (pd.Timestamp.now() - df['user_created_at']).dt.days
 df['class'] = df.apply(classify_node, axis=1)
-
 edges_df = df[['user_id']].dropna().drop_duplicates()
-
 users = edges_df['user_id'].unique()
-G = nx.DiGraph()
 
+G = nx.DiGraph()
 for _, row in retweets_df.iterrows():
     source = row['user_id']
     target = row['rt_user_id']
     delay = row['retweet_delay']
-    
     uid = row['user_id']
+    
     if not G.has_node(uid):
         G.add_node(uid)
     G.add_edge(source, target, weight=delay)
@@ -162,7 +165,6 @@ for u, v, data in G.edges(data=True):
 # colormap, community_map = create_community_colors(partition)
 colormap, dates_map = create_date_creation_colors(df)
 
-#%%
 net.from_nx(B_cleaned) # Convertir el grafo de networkx a pyvis
 for node in net.nodes:
         color = '#dddddd'  # default gray
@@ -214,7 +216,4 @@ html = html.replace('<body>', f'<body>{titulo}', 1)
 
 with open('red_interactiva_con_titulo.html', 'w', encoding='utf-8') as f:
     f.write(html)
-    
 webbrowser.open('red_interactiva_con_titulo.html')
-        
-# %%
